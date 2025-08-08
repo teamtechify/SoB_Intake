@@ -44,7 +44,7 @@ GDRIVE_PARENT_FOLDER_ID=xxxxxxxxxxxxxxxxxxxx
 
 2. In Airtable, create a base and table (e.g., `Intake`) with fields that match the mapping in `src/lib/airtable.ts`. You can adjust field names in that file to match your schema.
 
-3. The form posts to `/api/submit`, which parses the form, uploads files to Google Drive (default) or Cloudinary based on `STORAGE_PROVIDER`, and calls Airtable. Airtable receives public URLs in an `Attachments` field; set that field type to “Attachment”.
+3. The form posts to `/api/submit`, which parses the form, uploads files to Google Drive or Cloudinary, and calls Airtable. Provider is chosen by env vars at runtime on the server only (never exposed to the client). If `STORAGE_PROVIDER` is not set, it auto-detects based on available credentials.
 
 ### Google Drive setup notes
 - Service accounts do not have personal storage quotas. Prefer a Shared Drive folder.

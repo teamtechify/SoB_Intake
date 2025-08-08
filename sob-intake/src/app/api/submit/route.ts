@@ -16,7 +16,21 @@ export async function POST(req: NextRequest) {
       const getText = (name: string) => (formData.get(name) as string) || "";
 
       const attachmentUrls: { url: string; filename?: string }[] = [];
-      const provider = process.env.STORAGE_PROVIDER || "cloudinary";
+      const provider = (() => {
+        const override = process.env.STORAGE_PROVIDER;
+        if (override === "cloudinary" || override === "gdrive") return override;
+        const hasCloudinary = Boolean(
+          process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET
+        );
+        const hasGDrive = Boolean(
+          process.env.GDRIVE_SERVICE_ACCOUNT_EMAIL &&
+            process.env.GDRIVE_SERVICE_ACCOUNT_PRIVATE_KEY &&
+            process.env.GDRIVE_PARENT_FOLDER_ID
+        );
+        if (hasCloudinary) return "cloudinary";
+        if (hasGDrive) return "gdrive";
+        return "cloudinary";
+      })();
       for (const [key, value] of formData.entries()) {
         if (value instanceof File && value.size > 0) {
           uploadedFiles.push({ field: key, name: value.name, size: value.size, type: value.type });

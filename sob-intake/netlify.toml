@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[plugins]
+  package = "@netlify/plugin-nextjs"
+
+# Optional: set a default Node version via Netlify UI or here as a hint
+# [build.environment]
+#   NODE_VERSION = "20"
+#   NEXT_TELEMETRY_DISABLED = "1"
+
+

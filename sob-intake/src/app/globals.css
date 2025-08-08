@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+:root {
+  /* Approximate School of Bots-inspired palette */
+  --sob-ink: #0f172a; /* slate-900 */
+  --sob-paper: #f8fafc; /* slate-50 */
+  --sob-accent: #22c55e; /* green-500 */
+  --sob-border: #e2e8f0; /* slate-200 */
+}
+
+@theme inline {
+  --color-sob-ink: var(--sob-ink);
+  --color-sob-paper: var(--sob-paper);
+  --color-sob-accent: var(--sob-accent);
+  --color-sob-border: var(--sob-border);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html, body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--sob-paper);
+  color: var(--sob-ink);
+}

@@ -40,7 +40,7 @@ export function PhoneInput({
   return (
     <div>
       <PhoneInputLib
-        country={country as any}
+        country={country as unknown as string}
         value={val}
         onChange={(phone: string, data: CountryData | {}) => {
           const normalized = phone ? (phone.startsWith("+") ? phone : `+${phone}`) : "";

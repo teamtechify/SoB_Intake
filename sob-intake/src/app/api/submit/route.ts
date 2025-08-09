@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
             }
           }
         }
-      } catch (e) {
+      } catch {
         // best-effort; ignore
       }
       return NextResponse.json({ ok: true, airtable });

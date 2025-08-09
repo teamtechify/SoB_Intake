@@ -57,10 +57,9 @@ export async function uploadFileToAirtable(file: File, overrideFilename?: string
     }
   }
 
-  const json: any = await res.json();
-  // According to Airtable Web API, the response contains an id token reference
-  // that can be used when creating the record (as { id: token } in attachment field).
-  const token = json?.id || json?.attachment?.id || json?.token || null;
+  type UploadTokenResponse = { id?: string; token?: string; attachment?: { id?: string } };
+  const json: UploadTokenResponse = (await res.json()) as UploadTokenResponse;
+  const token = json.id || json.attachment?.id || json.token || null;
   return token;
 }
 

@@ -40,7 +40,7 @@ export function PhoneInput({
   return (
     <div>
       {(() => {
-        const PhoneComp = PhoneInputLib as unknown as ComponentType<any>;
+        const PhoneComp = PhoneInputLib as unknown as ComponentType<Record<string, unknown>>;
         return (
           <PhoneComp
             country={country as string}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import PhoneInputLib, { CountryData } from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
@@ -40,7 +40,7 @@ export function PhoneInput({
   return (
     <div>
       {/** some react-phone-input-2 typings miss newer props like separateDialCode; use unknown and cast inside */}
-      {(PhoneInputLib as unknown as (p: Record<string, unknown>) => JSX.Element)
+      {(PhoneInputLib as unknown as (p: Record<string, unknown>) => ReactElement)
       ({
         country: country as string,
         value: val,

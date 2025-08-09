@@ -98,7 +98,6 @@ export async function POST(req: NextRequest) {
     const airtable = await createIntakeRecord(body);
     return NextResponse.json({ ok: true, airtable });
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error("/api/submit error:", error);
     return NextResponse.json({ ok: false, error: "Submission failed" }, { status: 500 });
   }

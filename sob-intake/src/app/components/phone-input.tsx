@@ -39,13 +39,12 @@ export function PhoneInput({
 
   return (
     <div>
-      {/** some react-phone-input-2 typings miss newer props like separateDialCode; cast to any to allow */}
-      {/** eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      {(PhoneInputLib as unknown as (p: any) => JSX.Element)
+      {/** some react-phone-input-2 typings miss newer props like separateDialCode; use unknown and cast inside */}
+      {(PhoneInputLib as unknown as (p: Record<string, unknown>) => JSX.Element)
       ({
-        country: country as unknown as string,
+        country: country as string,
         value: val,
-        onChange: (phone: string, data: CountryData | {}) => {
+        onChange: (phone: string, data: CountryData | object) => {
           const normalized = phone ? (phone.startsWith("+") ? phone : `+${phone}`) : "";
           setVal(normalized);
           const c = (data as CountryData).countryCode as string | undefined;

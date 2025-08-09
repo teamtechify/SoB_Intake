@@ -11,6 +11,7 @@ export type UploadedFileSummary = {
   name: string;
   size: number;
   type: string;
+  airtableTokenId?: string;
 };
 
 export type IntakePayload = {
@@ -86,7 +87,13 @@ export async function createIntakeRecord(payload: IntakePayload) {
   setField("Uploaded Files (names)", payload.uploadedFiles?.map((f) => f.name).join(", "));
   const attachmentsMode = (process.env.AIRTABLE_ATTACHMENTS_MODE || "attachment").toLowerCase();
   if (attachmentsMode === "attachment") {
-    setField("Attachments", payload.attachments);
+    // Prefer token IDs from upload-to-Airtable flow, fallback to URL array if present
+    const tokens = payload.uploadedFiles?.filter((f) => f.airtableTokenId).map((f) => ({ id: f.airtableTokenId! }));
+    if (tokens && tokens.length > 0) {
+      setField("Attachments", tokens);
+    } else {
+      setField("Attachments", payload.attachments);
+    }
   } else if (attachmentsMode === "text") {
     // Write URLs into a long-text field. Use existing field name 'Attachments' for convenience.
     setField(

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createIntakeRecord, IntakePayload, UploadedFileSummary } from "@/lib/airtable";
-import { uploadBufferToCloudinary } from "@/lib/cloudinary";
-import { uploadBufferToDrive } from "@/lib/gdrive";
+import { uploadFileToAirtable } from "@/lib/airtable_upload";
+import { uploadAttachmentToRecord, bufferToBase64 } from "@/lib/airtable_content";
+import { getFieldIdByName } from "@/lib/airtable_schema";
 
 export const runtime = "nodejs";
 
@@ -13,44 +14,33 @@ export async function POST(req: NextRequest) {
       const formData = await req.formData();
 
       const uploadedFiles: UploadedFileSummary[] = [];
+      const fileEntries: { field: string; file: File; newName: string }[] = [];
       const getText = (name: string) => (formData.get(name) as string) || "";
 
       const attachmentUrls: { url: string; filename?: string }[] = [];
-      const provider = (() => {
-        const override = process.env.STORAGE_PROVIDER;
-        if (override === "cloudinary" || override === "gdrive") return override;
-        const hasCloudinary = Boolean(
-          process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET
-        );
-        const hasGDrive = Boolean(
-          process.env.GDRIVE_SERVICE_ACCOUNT_EMAIL &&
-            process.env.GDRIVE_SERVICE_ACCOUNT_PRIVATE_KEY &&
-            process.env.GDRIVE_PARENT_FOLDER_ID
-        );
-        if (hasCloudinary) return "cloudinary";
-        if (hasGDrive) return "gdrive";
-        return "cloudinary";
-      })();
       for (const [key, value] of formData.entries()) {
         if (value instanceof File && value.size > 0) {
-          uploadedFiles.push({ field: key, name: value.name, size: value.size, type: value.type });
-          const arrayBuffer = await value.arrayBuffer();
-          const buffer = Buffer.from(arrayBuffer);
-          if (provider === "cloudinary") {
-            const uploaded = await uploadBufferToCloudinary(buffer, value.name);
-            attachmentUrls.push({ url: uploaded.secure_url, filename: value.name });
-          } else {
-            const uploaded = await uploadBufferToDrive(buffer, value.name);
-            attachmentUrls.push({ url: uploaded.directUrl, filename: value.name });
-          }
+          // Rename uploaded file to match the input field for consistency
+          // Example: brandVoiceFile -> brandVoiceFile-originalName.ext
+          const safeField = key.replace(/[^a-zA-Z0-9_.-]/g, "_");
+          const ext = value.name.includes(".") ? value.name.substring(value.name.lastIndexOf(".")) : "";
+          const newName = `${safeField}${ext}`;
+          const tokenId = await uploadFileToAirtable(value, newName);
+          uploadedFiles.push({ field: key, name: newName, size: value.size, type: value.type, airtableTokenId: tokenId || undefined });
+          fileEntries.push({ field: key, file: value, newName });
         }
       }
+
+      const code = getText("phone_code");
+      const nat = getText("phone_national");
+      const combinedPhone = code && nat ? `${code}${nat.replace(/[^0-9]/g, "")}` : getText("phone");
 
       const payload: IntakePayload = {
         companyName: getText("companyName"),
         contactName: getText("contactName"),
         email: getText("email"),
-        phone: getText("phone"),
+        // Prefer E.164, else fall back to concatenated code+national, else raw
+        phone: getText("phone_e164") || combinedPhone,
         website: getText("website"),
         instagram: getText("instagram"),
         crm: getText("crm"),
@@ -77,6 +67,27 @@ export async function POST(req: NextRequest) {
       };
 
       const airtable = await createIntakeRecord(payload);
+
+      // If Web API token upload failed (no token ids), try Content API to
+      // attach files directly to the created record (<=5MB per file)
+      try {
+        const recordId: string | undefined = (airtable as any)?.id || (airtable as any)?.records?.[0]?.id;
+        if (recordId) {
+          // Resolve field id for Attachments once for reliability
+          const fieldRef = await getFieldIdByName(process.env.AIRTABLE_TABLE_NAME as string, "Attachments");
+          const fieldTarget = fieldRef?.fieldId || "Attachments";
+          for (const entry of fileEntries) {
+            const meta = uploadedFiles.find((u) => u.field === entry.field && u.name === entry.newName);
+            if (!meta?.airtableTokenId && entry.file.size <= 5 * 1024 * 1024) {
+              const arr = await entry.file.arrayBuffer();
+              const base64 = bufferToBase64(arr);
+              await uploadAttachmentToRecord({ recordId, field: fieldTarget, base64, contentType: entry.file.type || "application/octet-stream", filename: entry.newName });
+            }
+          }
+        }
+      } catch (e) {
+        // best-effort; ignore
+      }
       return NextResponse.json({ ok: true, airtable });
     }
 

@@ -1,11 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  /* Approximate School of Bots-inspired palette */
-  --sob-ink: #0f172a; /* slate-900 */
-  --sob-paper: #f8fafc; /* slate-50 */
-  --sob-accent: #22c55e; /* green-500 */
-  --sob-border: #e2e8f0; /* slate-200 */
+  /* School of Bots-inspired palette */
+  --sob-ink: #0b0b0f; /* deep ink */
+  --sob-paper: #ffffff; /* clean white */
+  --sob-accent: #ffae4a; /* unified accent (sandy brown) - used ONLY for submit button */
+  --sob-border: #e5e7eb; /* light border */
+  --sob-accent-2: #ff8a00; /* warm orange for gradients */
+  --sob-bg-base: #fff0f6; /* soft pink base so gradient tint covers long pages */
+  /* Primary hero blue tones from site feel */
+  --sob-blue: #2563eb; /* blue-600 */
+  --sob-blue-2: #0ea5e9; /* sky-500 */
+  --sob-blue-base: #08112e; /* deep navy base similar to site hero */
+  /* Panel gradient anchors (blue → orange) */
+  --sob-panel-from: #231d70; /* rgb(35,29,112) hsl(244,58%,27%) */
+  --sob-panel-to: #a27749;   /* rgb(162,119,73) hsl(31,37%,46%) */
+  --sob-green: #16a34a; /* tailwind green-600 */
 }
 
 @theme inline {
@@ -13,15 +23,206 @@
   --color-sob-paper: var(--sob-paper);
   --color-sob-accent: var(--sob-accent);
   --color-sob-border: var(--sob-border);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-sob-blue: var(--sob-blue);
+  --color-sob-blue-2: var(--sob-blue-2);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-display: "Druk Wide", var(--font-sans);
 }
 
-html, body {
-  min-height: 100%;
-}
+html, body { min-height: 100%; }
 
 body {
-  background: var(--sob-paper);
+  /* Let the html element's gradient show through */
+  background: transparent;
   color: var(--sob-ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
+
+/* Local Druk Wide (provided in public/fonts) */
+@font-face {
+  font-family: "Druk Wide";
+  src: url("/fonts/DrukWideBold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+.sob-display { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .02em; font-weight: 700; }
+
+/* Subtle multi-stop gradient background inspired by School of Bots */
+.sob-gradient-bg {
+  /* Full-page blue gradient with subtle radial blooms; no sticky parallax */
+  background:
+    radial-gradient(1200px 600px at 8% -10%, color-mix(in oklab, var(--sob-blue) 30%, transparent), transparent),
+    radial-gradient(900px 520px at 92% -5%, color-mix(in oklab, var(--sob-blue-2) 24%, transparent), transparent),
+    radial-gradient(950px 520px at 50% 115%, color-mix(in oklab, var(--sob-blue) 16%, transparent), transparent),
+    linear-gradient(180deg, color-mix(in oklab, var(--sob-blue) 10%, transparent) 0%, transparent 50%),
+    var(--sob-blue-base);
+  background-size: cover;
+}
+
+/* Card gradient similar to brand panels (dark blue to warm) */
+.sob-card-gradient {
+  /* Strong blue→orange panel gradient per provided colors */
+  background:
+    linear-gradient(
+      180deg,
+      var(--sob-panel-from) 0%,
+      color-mix(in oklab, var(--sob-panel-from) 92%, white) 35%,
+      color-mix(in oklab, var(--sob-panel-to) 25%, var(--sob-panel-from)) 70%,
+      color-mix(in oklab, var(--sob-panel-to) 55%, var(--sob-panel-from)) 100%
+    );
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* Closed card background (no bottom glow) */
+.sob-card-base {
+  background:
+    linear-gradient(
+      180deg,
+      var(--sob-panel-from) 0%,
+      color-mix(in oklab, var(--sob-panel-from) 70%, black) 100%
+    );
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.sob-card-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  z-index: -1; /* layer below foreground due to isolation */
+  background: linear-gradient(
+    180deg,
+    var(--sob-panel-from) 0%,
+    color-mix(in oklab, var(--sob-panel-from) 92%, white) 35%,
+    color-mix(in oklab, var(--sob-green) 25%, var(--sob-panel-from)) 70%,
+    color-mix(in oklab, var(--sob-green) 55%, var(--sob-panel-from)) 100%
+  );
+}
+
+.sob-card-foreground { position: relative; z-index: 0; }
+
+/* Pill button style (midnight blue background with pink border/glow) */
+.sob-pill-btn {
+  background:
+    radial-gradient(120% 200% at 50% 0%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 40%, transparent 70%),
+    #292364; /* rgb(41,35,100) */
+  border: 2px solid #de17ec; /* pink border (no glow) */
+  color: #ffffff;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: var(--font-mono);
+  transition: color 120ms ease;
+}
+
+.sob-pill-label {
+  transition: color 120ms ease, opacity 120ms ease;
+}
+
+.sob-pill-btn:hover .sob-pill-label,
+.sob-pill-btn:focus-visible .sob-pill-label,
+.sob-pill-btn:active .sob-pill-label { color: #de17ec; }
+
+/* File input styling */
+.sob-file input[type="file"] {
+  background: rgba(255,255,255,.05);
+  color: white;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: .5rem;
+  padding: .5rem .75rem;
+  width: 100%;
+}
+.sob-file input[type="file"]::file-selector-button {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  border-radius: .375rem;
+  padding: .4rem .6rem;
+  margin-right: .75rem;
+  cursor: pointer;
+}
+/* Reflect section status on focus/active */
+.sob-file input[type="file"]:focus-visible::file-selector-button,
+.sob-file input[type="file"]:active::file-selector-button { color: #ffffff; }
+.sob-complete .sob-file input[type="file"]:focus-visible::file-selector-button,
+.sob-complete .sob-file input[type="file"]:active::file-selector-button { color: var(--sob-green); }
+
+/* When a section is completed, highlight only on focus (no static border change) */
+.sob-complete input:focus,
+.sob-complete textarea:focus,
+.sob-complete select:focus,
+.sob-complete .PhoneInput input:focus {
+  outline: none !important;
+  /* Override Tailwind ring and border to green */
+  --tw-ring-color: color-mix(in oklab, var(--sob-green) 45%, transparent) !important;
+  --tw-ring-offset-color: transparent !important;
+  border-color: color-mix(in oklab, var(--sob-green) 55%, white) !important;
+  box-shadow: 0 0 0 2px var(--tw-ring-color) !important;
+}
+
+/* Unified dark select styling (transparent but readable) */
+.sob-select {
+  background: rgba(255,255,255,.05);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,.2);
+}
+.sob-select:focus { outline: 2px solid rgba(255,255,255,.25); outline-offset: 2px; }
+.sob-select option { background: #0b0b0f; color: #ffffff; }
+
+/* Phone input country select to match */
+.PhoneInputCountrySelect {
+  background: rgba(255,255,255,.05) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255,255,255,.2) !important;
+}
+.PhoneInputCountrySelect:focus { outline: 2px solid rgba(255,255,255,.25) !important; outline-offset: 2px; }
+.PhoneInputCountrySelect option { background: #0b0b0f; color: #ffffff; }
+.sob-file input[type="file"]:focus { outline: 2px solid rgba(255,255,255,.25); outline-offset: 2px; }
+
+/* react-phone-input-2 dark styling */
+.react-tel-input { width: 100%; }
+.react-tel-input .form-control {
+  background: rgba(255,255,255,.05) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255,255,255,.2) !important;
+  border-radius: .5rem !important;
+  width: 100% !important;
+  height: 44px !important;
+  padding: .5rem .75rem .5rem 3.25rem !important; /* space for dial code */
+}
+.react-tel-input .selected-flag {
+  background: rgba(255,255,255,.05) !important;
+  border-right: 1px solid rgba(255,255,255,.15) !important;
+  border-top-left-radius: .5rem !important;
+  border-bottom-left-radius: .5rem !important;
+}
+.react-tel-input .flag-dropdown { background: rgba(255,255,255,.05) !important; border: 1px solid rgba(255,255,255,.2) !important; border-right: none !important; }
+.react-tel-input .country-list {
+  background: #0b0b0f !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255,255,255,.2) !important;
+  border-radius: .5rem !important;
+  box-shadow: 0 10px 20px rgba(0,0,0,.35) !important;
+  max-height: 260px !important;
+  z-index: 40 !important;
+}
+.react-tel-input .country-list .search-box {
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.2) !important;
+  color: #ffffff !important;
+}
+.sob-phone-search { width: calc(100% - 1rem) !important; margin: .5rem !important; padding: .4rem .6rem !important; border-radius: .375rem !important; }
+.react-tel-input .country-list .country:hover { background: rgba(255,255,255,.08) !important; }
+.react-tel-input.separate-dial-code .selected-flag .dial-code { color: #ffffff !important; opacity: .85; }
+.react-tel-input .form-control:focus { outline: none !important; box-shadow: 0 0 0 2px color-mix(in oklab, var(--sob-accent) 30%, transparent) !important; border-color: color-mix(in oklab, var(--sob-accent) 60%, white) !important; }

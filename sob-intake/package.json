@@ -11,9 +11,12 @@
   "dependencies": {
     "cloudinary": "^2.7.0",
     "googleapis": "^155.0.0",
+    "libphonenumber-js": "^1.12.10",
     "next": "15.4.6",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "react-phone-input-2": "^2.15.1",
+    "react-phone-number-input": "^3.4.12"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -40,7 +40,8 @@ export default function RootLayout({
       <body className={`${publicSans.variable} ${spaceMono.variable} ${geistMono.variable} antialiased text-sob-ink min-h-full`}>
         <header className="w-full">
           <div className="mx-auto max-w-5xl px-4 md:px-6 py-2 flex items-center justify-center">
-            <a href="/" className="block" aria-label="School of Bots">
+            <a href="/" aria-label="School of Bots" className="block">
+              {/* next/image is recommended but optional here; keeping <img> to avoid loader config */}
               <img src="/logo.svg" alt="School of Bots" className="mx-auto w-56 md:w-72 h-auto" />
             </a>
           </div>

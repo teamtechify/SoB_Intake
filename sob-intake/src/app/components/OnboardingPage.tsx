@@ -226,7 +226,7 @@ export default function OnboardingPage() {
         // and do not block the green state even if filled with invalid URLs.
         return Boolean(values.crm);
       case 4:
-        const loom = (values as any).loomUrl as string | undefined;
+        const loom = (values as { loomUrl?: string }).loomUrl;
         if (loom && !isValidUrl(loom)) return false;
         return Boolean(values.notes || loom);
       default:

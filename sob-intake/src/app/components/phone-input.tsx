@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import PhoneInputLib from "react-phone-input-2";
+import PhoneInputLib, { CountryData } from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 
@@ -42,10 +42,11 @@ export function PhoneInput({
       <PhoneInputLib
         country={country as any}
         value={val}
-        onChange={(phone, data: any) => {
+        onChange={(phone: string, data: CountryData | {}) => {
           const normalized = phone ? (phone.startsWith("+") ? phone : `+${phone}`) : "";
           setVal(normalized);
-          if (data?.countryCode) setCountry(data.countryCode.toLowerCase());
+          const c = (data as CountryData).countryCode as string | undefined;
+          if (c) setCountry(c.toLowerCase());
         }}
         inputProps={{
           name,

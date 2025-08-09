@@ -71,7 +71,9 @@ export async function POST(req: NextRequest) {
       // If Web API token upload failed (no token ids), try Content API to
       // attach files directly to the created record (<=5MB per file)
       try {
-        const recordId: string | undefined = (airtable as any)?.id || (airtable as any)?.records?.[0]?.id;
+        type CreateResponse = { id: string } | { records: { id: string }[] };
+        const at = airtable as unknown as CreateResponse;
+        const recordId: string | undefined = (at as { id: string }).id || (Array.isArray((at as { records: { id: string }[] }).records) ? (at as { records: { id: string }[] }).records[0]?.id : undefined);
         if (recordId) {
           // Resolve field id for Attachments once for reliability
           const fieldRef = await getFieldIdByName(process.env.AIRTABLE_TABLE_NAME as string, "Attachments");

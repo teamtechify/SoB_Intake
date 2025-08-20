@@ -113,11 +113,6 @@ const FileInput = (props: React.InputHTMLAttributes<HTMLInputElement>) => {
         {...props}
         onChange={(e) => {
           props.onChange?.(e);
-          const has = e.currentTarget.files && e.currentTarget.files.length > 0;
-          const el = wrapperRef.current;
-          if (!el) return;
-          if (has) el.classList.add("has-file");
-          else el.classList.remove("has-file");
         }}
         className={["block w-full text-sm", props.className || ""].join(" ")}
       />
@@ -136,6 +131,9 @@ export default function OnboardingPage() {
     instagram?: string;
     website?: string;
   }>({});
+
+  const ACCEPTED_FILE_TYPES = ".pdf,.doc,.docx,.md,.txt,.csv,.xlsx";
+  const [filesByField, setFilesByField] = useState<Record<string, File[]>>({});
 
   const defaultState = useMemo(
     () => ({
@@ -172,6 +170,78 @@ export default function OnboardingPage() {
   const [phoneValue, setPhoneValue] = useState<PhoneValue>({ country: "US", raw: "", national: "" });
   const [openSections, setOpenSections] = useState<boolean[]>([true, false, false, false, false]);
   const [fileCounts, setFileCounts] = useState<Record<string, number>>({});
+
+  const addSelectedFiles = (fieldKey: string, list: FileList | null) => {
+    if (!list) return;
+    const incoming = Array.from(list);
+    const filtered = incoming.filter((f) => {
+      const dot = f.name.lastIndexOf(".");
+      const ext = dot >= 0 ? f.name.slice(dot).toLowerCase() : "";
+      return ACCEPTED_FILE_TYPES.split(",").map((s) => s.trim().toLowerCase()).includes(ext);
+    });
+    setFilesByField((prev) => {
+      const existing = prev[fieldKey] || [];
+      // Merge by filename+size to avoid duplicate chips if user reopens the picker and selects same files
+      const dedupeKey = (f: File) => `${f.name}::${f.size}`;
+      const map = new Map<string, File>();
+      [...existing, ...filtered].forEach((f) => map.set(dedupeKey(f), f));
+      const next = Array.from(map.values());
+      // Update counts alongside
+      setFileCounts((p) => ({ ...p, [fieldKey]: next.length }));
+      return { ...prev, [fieldKey]: next };
+    });
+  };
+
+  const removeFile = (fieldKey: string, index: number) => {
+    setFilesByField((prev) => {
+      const current = prev[fieldKey] ? [...prev[fieldKey]] : [];
+      if (index >= 0 && index < current.length) current.splice(index, 1);
+      const next = { ...prev, [fieldKey]: current };
+      setFileCounts((p) => ({ ...p, [fieldKey]: current.length }));
+      return next;
+    });
+  };
+
+  const clearFiles = (fieldKey: string) => {
+    setFilesByField((prev) => {
+      const next = { ...prev, [fieldKey]: [] };
+      setFileCounts((p) => ({ ...p, [fieldKey]: 0 }));
+      return next;
+    });
+  };
+
+  const clearAllFiles = () => {
+    setFilesByField({});
+    setFileCounts({});
+  };
+
+  const renderFileList = (fieldKey: string) => {
+    const items = filesByField[fieldKey] || [];
+    if (items.length === 0) return null;
+    return (
+      <div className="mt-2">
+        <div className="mb-2 flex items-center justify-between text-xs text-white/80">
+          <span>{items.length} file{items.length === 1 ? "" : "s"} attached</span>
+          <button type="button" className="underline hover:text-white" onClick={() => clearFiles(fieldKey)}>Clear</button>
+        </div>
+        <ul className="flex flex-wrap gap-2">
+          {items.map((f, idx) => (
+            <li key={`${f.name}-${idx}`} className="flex items-center gap-2 rounded-md border border-white/20 bg-white/5 px-2 py-1 text-xs">
+              <span className="text-white/90 truncate max-w-[14rem]" title={f.name}>{f.name}</span>
+              <button
+                type="button"
+                aria-label="Remove file"
+                className="inline-flex h-5 w-5 items-center justify-center rounded bg-white/10 hover:bg-white/20 text-white"
+                onClick={() => removeFile(fieldKey, idx)}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
 
   const isValidEmail = (v: string) => /.+@.+\..+/.test(v);
   const isValidPhone = (v: string) => /^\+?[0-9()\-\s]{7,20}$/.test(v);
@@ -306,12 +376,21 @@ export default function OnboardingPage() {
       }
       const formElement = formRef.current;
       if (!formElement) throw new Error("Form not available");
-      const form = new FormData(formElement);
+      // Build FormData manually to avoid duplicate file entries from native inputs
+      const form = new FormData();
       // Include text fields
       Object.entries(values).forEach(([k, v]) => {
         if (typeof v === "string") form.append(k, v);
       });
       Object.entries(values.links).forEach(([k, v]) => form.append(`links.${k}`, v));
+      // Hidden phone fields usually added by PhoneInput; mirror them explicitly
+      form.append("phone_e164", phoneValue.raw || "");
+      form.append("phone_country", (phoneValue.country || "").toUpperCase());
+
+      // Append managed files explicitly so selections persist until X removal
+      Object.entries(filesByField).forEach(([fieldKey, files]) => {
+        files.forEach((file) => form.append(fieldKey, file, file.name));
+      });
 
       const res = await fetch("/api/submit", {
         method: "POST",
@@ -323,6 +402,7 @@ export default function OnboardingPage() {
       console.log("Submitted:", json);
       setSuccess("Thanks! We received your submission.");
       setValues(defaultState);
+      setFilesByField({});
       setFileCounts({});
       setPhoneValue({ country: "US", raw: "", national: "" });
       setFieldErrors({});
@@ -433,13 +513,13 @@ export default function OnboardingPage() {
                 </Field>
                  <FileInput
                    name="brandVoiceFile"
-                   accept=".pdf,.doc,.docx,.md,.txt"
+                    accept={ACCEPTED_FILE_TYPES}
                    multiple
-                   onChange={(e)=>{
-                     const count = (e.target as HTMLInputElement).files?.length ?? 0;
-                     setFileCounts((p)=>({...p, brandVoiceFile: count}));
-                   }}
+                    onChange={(e)=>{
+                     addSelectedFiles("brandVoiceFile", (e.target as HTMLInputElement).files);
+                    }}
                  />
+                  {renderFileList("brandVoiceFile")}
               </div>
               <div className="space-y-4">
                  <Field label="Sales Pitch Script" hint="Paste content or upload a file." required>
@@ -447,13 +527,13 @@ export default function OnboardingPage() {
                 </Field>
                  <FileInput
                    name="salesPitchFile"
-                   accept=".pdf,.doc,.docx,.md,.txt"
+                    accept={ACCEPTED_FILE_TYPES}
                    multiple
-                   onChange={(e)=>{
-                     const count = (e.target as HTMLInputElement).files?.length ?? 0;
-                     setFileCounts((p)=>({...p, salesPitchFile: count}));
-                   }}
+                    onChange={(e)=>{
+                     addSelectedFiles("salesPitchFile", (e.target as HTMLInputElement).files);
+                    }}
                  />
+                  {renderFileList("salesPitchFile")}
               </div>
             </div>
             <div className="mt-6 space-y-4">
@@ -466,13 +546,13 @@ export default function OnboardingPage() {
               </Field>
                <FileInput
                  name="offerInfoFile"
-                 accept=".pdf,.doc,.docx,.md,.txt"
+                 accept={ACCEPTED_FILE_TYPES}
                  multiple
                  onChange={(e)=>{
-                   const count = (e.target as HTMLInputElement).files?.length ?? 0;
-                   setFileCounts((p)=>({...p, offerInfoFile: count}));
+                   addSelectedFiles("offerInfoFile", (e.target as HTMLInputElement).files);
                  }}
                />
+               {renderFileList("offerInfoFile")}
             </div>
           </AccordionSection>
 
@@ -492,13 +572,13 @@ export default function OnboardingPage() {
                 </Field>
                  <FileInput
                    name="brandFAQFile"
-                   accept=".pdf,.doc,.docx,.md,.txt"
+                    accept={ACCEPTED_FILE_TYPES}
                    multiple
-                   onChange={(e)=>{
-                     const count = (e.target as HTMLInputElement).files?.length ?? 0;
-                     setFileCounts((p)=>({...p, brandFAQFile: count}));
-                   }}
+                    onChange={(e)=>{
+                      addSelectedFiles("brandFAQFile", (e.target as HTMLInputElement).files);
+                    }}
                  />
+                  {renderFileList("brandFAQFile")}
               </div>
               <div className="space-y-4">
                  <Field label="Product FAQ" required>
@@ -506,13 +586,13 @@ export default function OnboardingPage() {
                 </Field>
                  <FileInput
                    name="productFAQFile"
-                   accept=".pdf,.doc,.docx,.md,.txt"
+                    accept={ACCEPTED_FILE_TYPES}
                    multiple
-                   onChange={(e)=>{
-                     const count = (e.target as HTMLInputElement).files?.length ?? 0;
-                     setFileCounts((p)=>({...p, productFAQFile: count}));
-                   }}
+                    onChange={(e)=>{
+                      addSelectedFiles("productFAQFile", (e.target as HTMLInputElement).files);
+                    }}
                  />
+                  {renderFileList("productFAQFile")}
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
@@ -522,13 +602,13 @@ export default function OnboardingPage() {
                 </Field>
                  <FileInput
                    name="salesGuideFile"
-                   accept=".pdf,.doc,.docx,.md,.txt"
+                    accept={ACCEPTED_FILE_TYPES}
                    multiple
-                   onChange={(e)=>{
-                     const count = (e.target as HTMLInputElement).files?.length ?? 0;
-                     setFileCounts((p)=>({...p, salesGuideFile: count}));
-                   }}
+                    onChange={(e)=>{
+                      addSelectedFiles("salesGuideFile", (e.target as HTMLInputElement).files);
+                    }}
                  />
+                  {renderFileList("salesGuideFile")}
               </div>
               <div className="space-y-4">
                  <Field label="Lead Qualification Criteria / Target Market" required>
@@ -536,13 +616,13 @@ export default function OnboardingPage() {
                 </Field>
                  <FileInput
                    name="leadQualificationFile"
-                   accept=".pdf,.doc,.docx,.md,.txt"
+                    accept={ACCEPTED_FILE_TYPES}
                    multiple
-                   onChange={(e)=>{
-                     const count = (e.target as HTMLInputElement).files?.length ?? 0;
-                     setFileCounts((p)=>({...p, leadQualificationFile: count}));
-                   }}
+                    onChange={(e)=>{
+                      addSelectedFiles("leadQualificationFile", (e.target as HTMLInputElement).files);
+                    }}
                  />
+                  {renderFileList("leadQualificationFile")}
               </div>
             </div>
           </AccordionSection>
@@ -601,7 +681,8 @@ export default function OnboardingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               <div className="space-y-2">
                  <label className="block text-sm font-medium text-white">Upload any access documents (PDF, DOCX, etc.)</label>
-                <FileInput name="accessDocs" multiple accept=".pdf,.doc,.docx,.txt" />
+                <FileInput name="accessDocs" multiple accept={ACCEPTED_FILE_TYPES} onChange={(e)=>{ addSelectedFiles("accessDocs", (e.target as HTMLInputElement).files); }} />
+                {renderFileList("accessDocs")}
               </div>
               <div className="space-y-2">
                  <label className="block text-sm font-medium text-white">Optional: Credentials / API Keys (secured)</label>
@@ -633,6 +714,13 @@ export default function OnboardingPage() {
           <div className="pt-2 flex items-center justify-center gap-3">
             <button type="submit" disabled={submitting} className="sob-pill-btn px-6 py-2.5 text-sm md:text-base disabled:opacity-60 disabled:cursor-not-allowed">
               <span className="sob-pill-label">{submitting ? "Submitting…" : "Submit"}</span>
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2.5 text-sm md:text-base rounded-full border border-white/20 text-white/90 hover:bg-white/10"
+              onClick={clearAllFiles}
+            >
+              Remove all files
             </button>
             {success ? <span className="text-green-700 text-sm">{success}</span> : null}
             {error ? <span className="text-red-700 text-sm">{error}</span> : null}

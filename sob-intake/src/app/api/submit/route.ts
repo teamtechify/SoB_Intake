@@ -6,16 +6,41 @@ import { getFieldIdByName } from "@/lib/airtable_schema";
 
 export const runtime = "nodejs";
 
-async function triggerN8nWebhook(airtableResponse: unknown): Promise<{ ok: boolean; status?: number }> {
+type AirtableRecord = {
+  id: string;
+  createdTime?: string;
+  fields?: Record<string, unknown>;
+};
+
+type CreateResponseSingle = { id: string } & Partial<AirtableRecord>;
+type CreateResponseBatch = { records: AirtableRecord[] };
+
+function isCreateBatch(value: unknown): value is CreateResponseBatch {
+  if (!value || typeof value !== "object") return false;
+  const maybe = value as { records?: unknown };
+  return Array.isArray(maybe.records);
+}
+
+function isCreateSingle(value: unknown): value is CreateResponseSingle {
+  if (!value || typeof value !== "object") return false;
+  const maybe = value as { id?: unknown };
+  return typeof maybe.id === "string";
+}
+
+function buildRecordsForWebhook(source: unknown, fetchedRecord: AirtableRecord | null): AirtableRecord[] {
+  if (fetchedRecord) return [fetchedRecord];
+  if (isCreateBatch(source)) return source.records;
+  if (isCreateSingle(source)) return [{ id: source.id, createdTime: source.createdTime, fields: source.fields }];
+  return [];
+}
+
+async function triggerN8nWebhook(records: AirtableRecord[]): Promise<{ ok: boolean; status?: number }> {
   try {
     const url = process.env.N8N_WEBHOOK_URL || "https://n8n.techifyserver.com/webhook/1ffccbab-f785-438e-b85e-b831271e6d58";
-    const bodyArray = (airtableResponse && typeof airtableResponse === "object" && (airtableResponse as any).records && Array.isArray((airtableResponse as any).records))
-      ? (airtableResponse as any).records
-      : [airtableResponse];
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bodyArray),
+      body: JSON.stringify(records),
     });
     return { ok: res.ok, status: res.status };
   } catch (err) {
@@ -24,16 +49,13 @@ async function triggerN8nWebhook(airtableResponse: unknown): Promise<{ ok: boole
   }
 }
 
-async function triggerSecondaryWebhook(airtableResponse: unknown): Promise<{ ok: boolean; status?: number }> {
+async function triggerSecondaryWebhook(records: AirtableRecord[]): Promise<{ ok: boolean; status?: number }> {
   try {
     const url = process.env.N8N_FORM_WEBHOOK_URL || "https://n8n.techifyserver.com/webhook/19c4b559-64ea-4b6a-ab11-eb98745d58f9";
-    const bodyArray = (airtableResponse && typeof airtableResponse === "object" && (airtableResponse as any).records && Array.isArray((airtableResponse as any).records))
-      ? (airtableResponse as any).records
-      : [airtableResponse];
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bodyArray),
+      body: JSON.stringify(records),
     });
     return { ok: res.ok, status: res.status };
   } catch (err) {
@@ -42,7 +64,7 @@ async function triggerSecondaryWebhook(airtableResponse: unknown): Promise<{ ok:
   }
 }
 
-async function fetchAirtableRecordById(recordId: string): Promise<any | null> {
+async function fetchAirtableRecordById(recordId: string): Promise<AirtableRecord | null> {
   try {
     const apiKey = process.env.AIRTABLE_API_KEY as string;
     const baseId = process.env.AIRTABLE_BASE_ID as string;
@@ -54,7 +76,8 @@ async function fetchAirtableRecordById(recordId: string): Promise<any | null> {
       cache: "no-store",
     });
     if (!res.ok) return null;
-    return res.json();
+    const json = (await res.json()) as unknown;
+    return json as AirtableRecord;
   } catch {
     return null;
   }
@@ -120,7 +143,7 @@ export async function POST(req: NextRequest) {
         attachments: attachmentUrls,
       };
 
-      const airtable = await createIntakeRecord(payload);
+      const airtable = (await createIntakeRecord(payload)) as unknown;
 
       // If Web API token upload failed (no token ids), try Content API to
       // attach files directly to the created record (<=5MB per file)
@@ -147,17 +170,17 @@ export async function POST(req: NextRequest) {
       }
       // Fetch the full, current Airtable record (to include resolved attachments) if possible
       const fullRecord = createdRecordId ? await fetchAirtableRecordById(createdRecordId) : null;
-      const payloadForWebhooks = fullRecord || airtable;
+      const recordsForWebhook = buildRecordsForWebhook(airtable, fullRecord);
       const [webhook, webhook2] = await Promise.all([
-        triggerN8nWebhook(payloadForWebhooks),
-        triggerSecondaryWebhook(payloadForWebhooks),
+        triggerN8nWebhook(recordsForWebhook),
+        triggerSecondaryWebhook(recordsForWebhook),
       ]);
-      return NextResponse.json({ ok: true, airtable, record: payloadForWebhooks, webhook, webhook2 });
+      return NextResponse.json({ ok: true, airtable, record: fullRecord || airtable, webhook, webhook2 });
     }
 
     // JSON fallback (e.g., if sending application/json)
     const body = (await req.json().catch(() => ({}))) as IntakePayload;
-    const airtable = await createIntakeRecord(body);
+    const airtable = (await createIntakeRecord(body)) as unknown;
     // Determine recordId and attempt to fetch full record
     let recordId: string | undefined;
     try {
@@ -166,12 +189,12 @@ export async function POST(req: NextRequest) {
       recordId = (at as { id: string }).id || (Array.isArray((at as { records: { id: string }[] }).records) ? (at as { records: { id: string }[] }).records[0]?.id : undefined);
     } catch {}
     const fullRecord = recordId ? await fetchAirtableRecordById(recordId) : null;
-    const payloadForWebhooks = fullRecord || airtable;
+    const recordsForWebhook = buildRecordsForWebhook(airtable, fullRecord);
     const [webhook, webhook2] = await Promise.all([
-      triggerN8nWebhook(payloadForWebhooks),
-      triggerSecondaryWebhook(payloadForWebhooks),
+      triggerN8nWebhook(recordsForWebhook),
+      triggerSecondaryWebhook(recordsForWebhook),
     ]);
-    return NextResponse.json({ ok: true, airtable, record: payloadForWebhooks, webhook, webhook2 });
+    return NextResponse.json({ ok: true, airtable, record: fullRecord || airtable, webhook, webhook2 });
   } catch (error) {
     console.error("/api/submit error:", error);
     return NextResponse.json({ ok: false, error: "Submission failed" }, { status: 500 });

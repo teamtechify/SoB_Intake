@@ -275,8 +275,8 @@ export default function OnboardingPage() {
         // Required: companyName, contactName, email (valid), instagram handle present & valid
         if (!values.companyName || !values.contactName || !values.email || !isValidEmail(values.email)) return false;
         if (!values.instagram || !isValidInstagram(values.instagram)) return false;
-        if (values.phone && !isValidPhone(values.phone)) return false;
-        if (values.website && !isValidUrl(values.website)) return false;
+        if (!phoneValue.e164) return false;
+        if (!values.website || !isValidUrl(values.website)) return false;
         return true;
       case 1:
         // Required: Brand Voice, Sales Pitch, Offer Info (each: text OR file)
@@ -319,6 +319,20 @@ export default function OnboardingPage() {
     // Instagram required
     if (!values.instagram) {
       setError("Instagram Handle is required");
+      setOpenSections((prev) => prev.map((v, i) => (i === 0 ? true : v)));
+      return false;
+    }
+    // Phone required (must be valid E.164)
+    if (!phoneValue.e164) {
+      setFieldErrors((p) => ({ ...p, phone: "Enter a valid phone number" }));
+      setError("Phone number is required");
+      setOpenSections((prev) => prev.map((v, i) => (i === 0 ? true : v)));
+      return false;
+    }
+    // Website required and must be valid URL
+    if (!values.website || !isValidUrl(values.website)) {
+      setFieldErrors((p) => ({ ...p, website: "Enter a valid URL" }));
+      setError("Valid Website URL is required");
       setOpenSections((prev) => prev.map((v, i) => (i === 0 ? true : v)));
       return false;
     }
@@ -459,7 +473,7 @@ export default function OnboardingPage() {
                 />
                 {fieldErrors.email ? <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p> : null}
               </Field>
-              <Field label="Phone Number">
+              <Field label="Phone Number" required>
                 <PhoneInput
                   value={phoneValue}
                   onChange={(v) => {
@@ -469,11 +483,12 @@ export default function OnboardingPage() {
                     else setFieldErrors((p) => ({ ...p, phone: undefined }));
                   }}
                   name="phone"
+                  required
                 />
                 {fieldErrors.phone ? <p className="text-xs text-red-400 mt-1">{fieldErrors.phone}</p> : null}
               </Field>
-              <Field label="Website">
-                <TextInput name="website" value={values.website} onChange={handleChange} placeholder="https://yourdomain.com" />
+              <Field label="Website" required>
+                <TextInput name="website" value={values.website} onChange={handleChange} placeholder="https://yourdomain.com" required />
                 {fieldErrors.website ? <p className="text-xs text-red-600 mt-1">{fieldErrors.website}</p> : null}
               </Field>
                <Field label="Instagram Handle" required>

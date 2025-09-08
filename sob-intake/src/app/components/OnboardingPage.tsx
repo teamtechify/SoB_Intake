@@ -210,10 +210,7 @@ export default function OnboardingPage() {
     });
   };
 
-  const clearAllFiles = () => {
-    setFilesByField({});
-    setFileCounts({});
-  };
+  // Removed clearAllFiles as bulk removal UI is no longer present
 
   const renderFileList = (fieldKey: string) => {
     const items = filesByField[fieldKey] || [];
@@ -730,13 +727,7 @@ export default function OnboardingPage() {
             <button type="submit" disabled={submitting} className="sob-pill-btn px-6 py-2.5 text-sm md:text-base disabled:opacity-60 disabled:cursor-not-allowed">
               <span className="sob-pill-label">{submitting ? "Submitting…" : "Submit"}</span>
             </button>
-            <button
-              type="button"
-              className="px-4 py-2.5 text-sm md:text-base rounded-full border border-white/20 text-white/90 hover:bg-white/10"
-              onClick={clearAllFiles}
-            >
-              Remove all files
-            </button>
+            {/* Removed 'Remove all files' button */}
             {success ? <span className="text-green-700 text-sm">{success}</span> : null}
             {error ? <span className="text-red-700 text-sm">{error}</span> : null}
           </div>

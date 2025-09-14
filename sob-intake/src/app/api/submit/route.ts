@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
         email: getText("email"),
         // Prefer E.164, else fall back to concatenated code+national, else raw
         phone: getText("phone_e164") || combinedPhone,
+        provider: getText("provider"),
         website: getText("website"),
         instagram: getText("instagram"),
         crm: getText("crm"),

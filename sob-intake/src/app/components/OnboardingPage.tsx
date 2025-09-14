@@ -141,6 +141,7 @@ export default function OnboardingPage() {
       contactName: "",
       email: "",
       phone: "",
+      provider: "",
       website: "",
       instagram: "",
       crm: "",
@@ -272,6 +273,7 @@ export default function OnboardingPage() {
         // Required: companyName, contactName, email (valid), instagram handle present & valid
         if (!values.companyName || !values.contactName || !values.email || !isValidEmail(values.email)) return false;
         if (!values.instagram || !isValidInstagram(values.instagram)) return false;
+        if (!values.provider) return false;
         if (!phoneValue.e164) return false;
         if (!values.website || !isValidUrl(values.website)) return false;
         return true;
@@ -316,6 +318,12 @@ export default function OnboardingPage() {
     // Instagram required
     if (!values.instagram) {
       setError("Instagram Handle is required");
+      setOpenSections((prev) => prev.map((v, i) => (i === 0 ? true : v)));
+      return false;
+    }
+    // Provider required
+    if (!values.provider) {
+      setError("Provider is required");
       setOpenSections((prev) => prev.map((v, i) => (i === 0 ? true : v)));
       return false;
     }
@@ -469,6 +477,21 @@ export default function OnboardingPage() {
                   placeholder="you@company.com"
                 />
                 {fieldErrors.email ? <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p> : null}
+              </Field>
+              <Field label="Provider" required>
+                <select
+                  name="provider"
+                  value={values.provider}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-lg sob-select px-3 py-2 text-sm md:text-base focus:outline-none"
+               >
+                  <option value="" disabled>
+                    Choose an option
+                  </option>
+                  <option value="Blooio">Blooio</option>
+                  <option value="SMS">SMS</option>
+                </select>
               </Field>
               <Field label="Phone Number" required>
                 <PhoneInput

@@ -19,6 +19,7 @@ export type IntakePayload = {
   contactName?: string;
   email?: string;
   phone?: string;
+  provider?: string;
   website?: string;
   instagram?: string;
   crm?: string;
@@ -65,6 +66,7 @@ export async function createIntakeRecord(payload: IntakePayload) {
   setField("Contact Name", payload.contactName);
   setField("Email", payload.email);
   setField("Phone", payload.phone);
+  setField("Provider", payload.provider);
   setField("Website", payload.website);
   setField("Instagram", payload.instagram);
   setField("CRM", payload.crm);
